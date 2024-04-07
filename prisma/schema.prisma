@@ -19,8 +19,8 @@ model WazeAlerts {
   pubMillis    BigInt
   reportMillis BigInt?
 
-  locationX Float
-  locationY Float
+  lat Float
+  lon Float
 
   type    String // TODO: Possibly make this an enum
   subtype String // TODO: Possibly make this an enum
@@ -32,4 +32,30 @@ model WazeAlerts {
   insertedAt DateTime @default(now()) @db.Timestamp(6)
 
   @@index([pubMillis])
+}
+
+model Box {
+  id String @id @default(uuid()) @db.Uuid
+
+  centerLat Float
+  centerLon Float
+
+  HeatmapData HeatmapData[]
+
+  @@unique([centerLat, centerLon])
+}
+
+model HeatmapData {
+  id String @id @default(uuid()) @db.Uuid
+
+  type    String
+  subType String
+  date    DateTime @db.Date
+
+  count Int @db.SmallInt
+
+  Box   Box    @relation(fields: [boxId], references: [id])
+  boxId String @db.Uuid
+
+  @@unique([type, subType, date, boxId])
 }

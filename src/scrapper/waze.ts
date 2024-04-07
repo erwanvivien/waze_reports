@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { wazeGeoRSSApiResponseSchema } from "./schema";
-import { prismaClient } from "./prisma";
+import { prismaClient } from "../prisma";
 import { WazeAlerts as DatabaseWazeAlert } from "@prisma/client";
 
 type WazeGeoRSSApiResponse = z.output<typeof wazeGeoRSSApiResponseSchema>;
@@ -49,8 +49,8 @@ const apiAlertToDatabaseAlert = (
   city: alert.city ?? null,
   country: alert.country ?? null,
 
-  locationX: alert.location.x,
-  locationY: alert.location.y,
+  lon: alert.location.x,
+  lat: alert.location.y,
 
   pubMillis: BigInt(alert.pubMillis),
   reportMillis: alert.reportMillis ? BigInt(alert.reportMillis) : null,
