@@ -13,6 +13,11 @@ const parisBoundingBox: BoundingBox = {
   bottomRight: [48.91009, 2.42],
 };
 
+const ileDeFranceBoundingBox: BoundingBox = {
+  topLeft: [48.571155, 1.933594],
+  bottomRight: [49.117029, 2.785034],
+};
+
 const fetchAllParis = async (currentBB: BoundingBox): Promise<number> => {
   const center: LatLong = [
     (currentBB.topLeft[0] + currentBB.bottomRight[0]) / 2,
