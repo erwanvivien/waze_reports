@@ -38,7 +38,9 @@ const wazeAlerts = async (
   return wazeGeoRSSApiResponseSchema.parse(data);
 };
 
-const apiAlertToDatabaseAlert = (alert: APIWazeAlert): DatabaseWazeAlert => ({
+const apiAlertToDatabaseAlert = (
+  alert: APIWazeAlert
+): Omit<DatabaseWazeAlert, "insertedAt"> => ({
   uuid: alert.uuid,
   type: alert.type,
   subtype: alert.subtype,
@@ -55,7 +57,7 @@ const apiAlertToDatabaseAlert = (alert: APIWazeAlert): DatabaseWazeAlert => ({
 });
 
 type NewAlertsResult = {
-  newAlerts: DatabaseWazeAlert[];
+  newAlerts: Omit<DatabaseWazeAlert, "insertedAt">[];
   allFetchedAlerts: APIWazeAlert[];
 };
 

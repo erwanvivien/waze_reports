@@ -22,12 +22,14 @@ model WazeAlerts {
   locationX Float
   locationY Float
 
-  type    String
-  subtype String
+  type    String // TODO: Possibly make this an enum
+  subtype String // TODO: Possibly make this an enum
 
   street  String?
   city    String?
   country String?
+
+  insertedAt DateTime @default(now()) @db.Timestamp(6)
 
   @@index([pubMillis])
 }
