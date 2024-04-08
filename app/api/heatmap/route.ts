@@ -1,6 +1,7 @@
 import { prismaClient } from "@/src/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { heatmapResponseSchema } from "./schema";
 
 const querySchema = z.object({
   topLeftLat: z.coerce.number().max(90).min(-90),
@@ -14,11 +15,6 @@ const querySchema = z.object({
   type: z.string().optional(),
   subtype: z.string().optional(),
 });
-
-export const heatmapResponseSchema = z.union([
-  z.object({ count: z.number(), lat: z.number(), lon: z.number() }).array(),
-  z.literal(null),
-]);
 
 type HeatmapResponse = z.output<typeof heatmapResponseSchema>;
 

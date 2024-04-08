@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { heatmapResponseSchema } from "./api/heatmap/route";
-import { set, z } from "zod";
+import { heatmapResponseSchema } from "./api/heatmap/schema";
+import { z } from "zod";
 
 let map: google.maps.Map;
 let heatmap: google.maps.visualization.HeatmapLayer;
