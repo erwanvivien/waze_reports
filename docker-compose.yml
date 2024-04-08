@@ -2,12 +2,15 @@ version: "3.9"
 services:
   db:
     image: postgres:15
+    container_name: waze_db
     volumes:
-      - database:/var/lib/postgresql/data
+      - ./database:/var/lib/postgresql/data
     env_file:
       - .env
     ports:
       - "5432:5432"
+    networks:
+      - db
     healthcheck:
       test: ["CMD-SHELL", 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"']
       interval: 60s
@@ -15,5 +18,21 @@ services:
       retries: 5
     restart: always
 
-volumes:
-  database:
+  scrapper:
+    build:
+      context: .
+      dockerfile: Dockerfile.scrapper
+      network: host
+    container_name: waze_scrapper
+    env_file:
+      - .env
+    networks:
+      - db
+    restart: always
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  db:

@@ -1,0 +1,21 @@
+FROM node:18
+WORKDIR /app
+
+COPY package.json .
+RUN npm install --frozen-lockfile
+
+COPY prisma ./prisma/
+RUN npx prisma generate
+
+COPY src ./src/
+
+RUN echo "echo Starting the scrapper..." > ./start.sh
+RUN echo "npx tsx src/scrapper/main.ts" >> ./start.sh
+RUN echo "echo Done." >> ./start.sh
+RUN echo "echo Starting the heatmap..." >> ./start.sh
+RUN echo "npx tsx src/heatmap/main.ts" >> ./start.sh
+RUN echo "echo Done. Waiting for auto-restart..." >> ./start.sh
+RUN echo "sleep \${SCRAPPER_INTERVAL_MIN}m" >> ./start.sh
+RUN chmod +x ./start.sh
+
+CMD ["./start.sh"]
