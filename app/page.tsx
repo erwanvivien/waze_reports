@@ -1,8 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { heatmapResponseSchema } from "./api/heatmap/schema";
+import {
+  heatmapResponseSchema,
+  WazeSubtype,
+  WazeType,
+} from "./api/heatmap/schema";
 import { z } from "zod";
+import { OptionModal } from "./OptionModal";
+import { isDeepStrictEqual, types } from "util";
 
 let map: google.maps.Map;
 let heatmap: google.maps.visualization.HeatmapLayer;
@@ -50,9 +56,15 @@ const initMap = (params: InitMapParams): google.maps.Map => {
   return map;
 };
 
+const isEqual = (a: any, b: any) => {
+  return JSON.stringify(a) === JSON.stringify(b);
+};
+
 type FetchDataParams = {
   center: { lat: number; lng: number };
   bounds: google.maps.LatLngBounds | undefined;
+  types: WazeType[];
+  subtypes: WazeSubtype[];
 };
 
 const fetchNewData = async (
@@ -60,6 +72,9 @@ const fetchNewData = async (
   signal: AbortSignal
 ): Promise<google.maps.visualization.WeightedLocation[] | null> => {
   const { bounds, center } = params;
+
+  const types = [...new Set(params.types)];
+  const subtypes = [...new Set(params.subtypes)];
 
   const topLeftLat = bounds?.getSouthWest().lat() || center.lat - 0.1;
   const topLeftLon = bounds?.getSouthWest().lng() || center.lng - 0.1;
@@ -72,6 +87,19 @@ const fetchNewData = async (
   url.searchParams.append("bottomRightLat", bottomRightLat.toString());
   url.searchParams.append("bottomRightLon", bottomRightLon.toString());
   url.searchParams.append("date", new Date().toISOString());
+  if (
+    types.length !== defaultTypes.length &&
+    !isEqual(types.sort(), defaultTypes.sort())
+  ) {
+    url.searchParams.append("types", types.join(","));
+  }
+
+  if (
+    subtypes.length !== defaultSubtypes.length &&
+    !isEqual(subtypes.sort(), defaultSubtypes.sort())
+  ) {
+    url.searchParams.append("subtypes", subtypes.join(","));
+  }
 
   const response = await fetch(url, { signal });
   const data = await response.json();
@@ -97,8 +125,70 @@ const getTimeout = (
       Math.pow(currentCenter.lng - lastCenter.lng, 2)
   );
 
-  return distance > 0.1 ? 500 : 2000;
+  return distance > 0.05 ? 300 : 1000;
 };
+
+const defaultTypes: WazeType[] = [
+  "ACCIDENT",
+  "HAZARD",
+  "JAM",
+  "ROAD_CLOSED",
+  "POLICE",
+  "CHITCHAT",
+];
+
+const defaultSubtypes: WazeSubtype[] = [
+  // Accident
+  "ACCIDENT_MINOR",
+  "ACCIDENT_MAJOR",
+
+  // Hazard
+  // Hazard on road
+  "HAZARD_ON_ROAD",
+  "HAZARD_ON_ROAD_CAR_STOPPED",
+  "HAZARD_ON_ROAD_CONSTRUCTION",
+  "HAZARD_ON_ROAD_EMERGENCY_VEHICLE",
+  "HAZARD_ON_ROAD_ICE",
+  "HAZARD_ON_ROAD_LANE_CLOSED",
+  "HAZARD_ON_ROAD_OBJECT",
+  "HAZARD_ON_ROAD_OIL",
+  "HAZARD_ON_ROAD_POT_HOLE",
+  "HAZARD_ON_ROAD_ROAD_KILL",
+  "HAZARD_ON_ROAD_TRAFFIC_LIGHT_FAULT",
+  // Hazard on shoulder
+  "HAZARD_ON_SHOULDER",
+  "HAZARD_ON_SHOULDER_ANIMALS",
+  "HAZARD_ON_SHOULDER_CAR_STOPPED",
+  "HAZARD_ON_SHOULDER_MISSING_SIGN",
+  // Hazard weather
+  "HAZARD_WEATHER",
+  "HAZARD_WEATHER_FLOOD",
+  "HAZARD_WEATHER_FOG",
+  "HAZARD_WEATHER_FREEZING_RAIN",
+  "HAZARD_WEATHER_HAIL",
+  "HAZARD_WEATHER_HEAT_WAVE",
+  "HAZARD_WEATHER_HEAVY_RAIN",
+  "HAZARD_WEATHER_HEAVY_SNOW",
+  "HAZARD_WEATHER_HURRICANE",
+  "HAZARD_WEATHER_MONSOON",
+  "HAZARD_WEATHER_TORNADO",
+
+  // Road closed
+  "ROAD_CLOSED",
+  "ROAD_CLOSED_HAZARD",
+  "ROAD_CLOSED_CONSTRUCTION",
+  "ROAD_CLOSED_EVENT",
+
+  // Jam
+  "JAM_LIGHT_TRAFFIC",
+  "JAM_MODERATE_TRAFFIC",
+  "JAM_HEAVY_TRAFFIC",
+  "JAM_STAND_STILL_TRAFFIC",
+
+  // Police
+  "POLICE_VISIBLE",
+  "POLICE_HIDDEN",
+];
 
 const Home: React.FC = () => {
   const mapRef = useRef(null);
@@ -111,6 +201,9 @@ const Home: React.FC = () => {
   const [currentData, setCurrentData] = useState<
     google.maps.visualization.WeightedLocation[]
   >([]);
+
+  const [types, setTypes] = useState<WazeType[]>(defaultTypes);
+  const [subtypes, setSubtypes] = useState<WazeSubtype[]>(defaultSubtypes);
 
   useEffect(() => {
     if (!mapRef.current) {
@@ -138,7 +231,10 @@ const Home: React.FC = () => {
     const bounds = map.getBounds();
 
     const timeoutId = setTimeout(async () => {
-      const result = await fetchNewData({ center, bounds }, signal);
+      const result = await fetchNewData(
+        { center, bounds, types, subtypes },
+        signal
+      );
       if (Array.isArray(result)) {
         setCurrentData(result);
         lastCenter.current = center;
@@ -149,7 +245,7 @@ const Home: React.FC = () => {
       clearTimeout(timeoutId);
       abortController.abort();
     };
-  }, [center]);
+  }, [center, types, subtypes]);
 
   useEffect(() => {
     const purple = "#3b1c6f";
@@ -172,12 +268,20 @@ const Home: React.FC = () => {
   }, [currentData, mapType]);
 
   return (
-    <div
-      ref={mapRef}
-      style={{ height: "100vh" }}
-      tabIndex={-1}
-      aria-hidden={true}
-    />
+    <>
+      <div
+        ref={mapRef}
+        style={{ height: "100vh" }}
+        tabIndex={-1}
+        aria-hidden={true}
+      />
+      <OptionModal
+        types={types}
+        setTypes={setTypes}
+        subtypes={subtypes}
+        setSubtypes={setSubtypes}
+      />
+    </>
   );
 };
 

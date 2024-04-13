@@ -1,7 +1,13 @@
 import { prismaClient } from "@/src/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { heatmapResponseSchema } from "./schema";
+import {
+  heatmapResponseSchema,
+  subtypeSchema,
+  typeSchema,
+  WazeSubtype,
+  WazeType,
+} from "./schema";
 
 const querySchema = z.object({
   topLeftLat: z.coerce.number().max(90).min(-90),
@@ -12,11 +18,25 @@ const querySchema = z.object({
 
   date: z.string().transform((arg) => new Date(arg)),
 
-  type: z.string().optional(),
-  subtype: z.string().optional(),
+  types: z
+    .string()
+    .transform((arg) => arg.split(",") as WazeType[])
+    .refine((arg) => arg.every((type) => typeSchema.safeParse(type).success))
+    .optional(),
+  subtypes: z
+    .string()
+    .transform((arg) => arg.split(",") as WazeSubtype[])
+    .refine((arg) =>
+      arg.every((subtype) => subtypeSchema.safeParse(subtype).success)
+    )
+    .optional(),
 });
 
 type HeatmapResponse = z.output<typeof heatmapResponseSchema>;
+
+type QueryWhere = NonNullable<
+  Parameters<typeof prismaClient.heatmapData.findMany>[0]
+>["where"];
 
 export const GET = async (
   req: NextRequest
@@ -28,9 +48,22 @@ export const GET = async (
     bottomRightLon,
     topLeftLat,
     topLeftLon,
-    type,
-    subtype,
+    types,
+    subtypes,
   } = querySchema.parse(searchParams);
+
+  let typeSelection: QueryWhere;
+  if (types !== undefined && subtypes !== undefined) {
+    typeSelection = {
+      OR: [{ type: { in: types } }, { subType: { in: subtypes } }],
+    };
+  } else if (types !== undefined) {
+    typeSelection = { type: { in: types } };
+  } else if (subtypes !== undefined) {
+    typeSelection = { subType: { in: subtypes } };
+  } else {
+    typeSelection = {};
+  }
 
   const heatmapData = await prismaClient.heatmapData.findMany({
     select: {
@@ -43,8 +76,7 @@ export const GET = async (
         centerLat: { gte: topLeftLat, lte: bottomRightLat },
         centerLon: { gte: topLeftLon, lte: bottomRightLon },
       },
-      type: type ? { equals: type } : undefined,
-      subType: subtype ? { equals: subtype } : undefined,
+      ...typeSelection,
     },
   });
 
